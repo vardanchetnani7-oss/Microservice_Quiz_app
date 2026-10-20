@@ -22,17 +22,25 @@ public class QuizService {
     @Autowired
     QuizInterface quizInterface;
 
-    public ResponseEntity<String>createQuiz(String category,int numQ,String title){
+    public ResponseEntity<String> createQuiz(String category, int numQ, String title) {
 
-        List<Integer> questions = quizInterface.getQuestionsForQuiz(category,numQ).getBody();
+        ResponseEntity<List<Integer>> response = quizInterface.getQuestionsForQuiz(category, numQ);
+        List<Integer> questions = response.getBody();
+
+        // Fallback returned 503 or no questions came back, so don't save an empty quiz
+        if (response.getStatusCode() == HttpStatus.SERVICE_UNAVAILABLE
+                || questions == null
+                || questions.isEmpty()) {
+            return new ResponseEntity<>("Question service is unavailable or no questions found, please try again later",
+                    HttpStatus.SERVICE_UNAVAILABLE);
+        }
 
         Quiz quiz = new Quiz();
         quiz.setTitle(title);
         quiz.setQuestionIds(questions);
         quizDao.save(quiz);
 
-       return new ResponseEntity<>("Success", HttpStatus.CREATED);
-
+        return new ResponseEntity<>("Success", HttpStatus.CREATED);
     }
 
     public ResponseEntity<List<QuestionWrapper>> getQuizQuestions(Integer id) {
